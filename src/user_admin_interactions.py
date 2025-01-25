@@ -184,7 +184,7 @@ class ThreadHandler(Cog):
 
         thread = message.guild.get_thread(message.channel.id)
 
-        if thread.parent and thread.parent_id == self.config.bot_unban_channel_id:
+        if thread and thread.parent and thread.parent_id == self.config.bot_unban_channel_id:
             await self.on_unban_thread_message(message)
 
     async def cog_unload(self) -> None:

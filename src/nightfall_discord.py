@@ -8,7 +8,7 @@ from gamestatuswatch import GameStatusWatch
 from user_admin_interactions import DirectMessageHandler, ThreadHandler
 
 loadedcogs = list()
-
+nf_bot = Bot
 
 async def load(bot: Bot):
     await bot.load_extension("nightfall_discord")
@@ -16,6 +16,8 @@ async def load(bot: Bot):
 
 async def setup(bot: Bot):
     print(f"Loading Nightfall Discord.")
+    global nf_bot
+    nf_bot = bot
     path = 'bot-config.yml'
     print(f"Loading {path}")
     if os.path.isfile(path):
@@ -36,7 +38,7 @@ async def setup(bot: Bot):
 
         print(f"Successfully loaded Nightfall Discord!")
     else:
-        print("No config provided, unable to start bot (Please create a bot-config.yml)!")
+        print(f"No config provided, unable to start bot (Please create a {path})!")
         await bot.close()
 
 

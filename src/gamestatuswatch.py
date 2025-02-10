@@ -120,6 +120,23 @@ class GameStatusWatch(Cog):
         self.list_server_status.restart(update_channel=update_channel)
         await ctx.channel.send("Restarted server updater.")
 
+    @commands.command(name="reload_extension", brief="Restarts the Nightfall Bot. Admin only.")
+    @commands.has_role("Admin")
+    async def reload_extension(self, ctx: commands.Context):
+        await ctx.channel.send("Reloading the Nightfall Bot.")
+        await self.bot.reload_extension("nightfall_discord")
+
+    async def cog_check(self, ctx) -> bool:
+        if ctx.guild.id != self.config.bot_reports_guild_id:
+            print(f"User: {ctx.author} Id: {ctx.author.id} tried to send a message or use a command in an invalid guild!")
+            raise discord.ext.commands.GuildNotFound("")
+        return True
+
+    async def cog_command_error(self, ctx, error: Exception) -> None:
+        if isinstance(error, discord.ext.commands.GuildNotFound):
+            await ctx.send("You cannot use this in an invalid guild.")
+            return
+
 
 class ServerUpdateChecker:
     def __init__(self, host, port, update_frequency, embed_color_list):

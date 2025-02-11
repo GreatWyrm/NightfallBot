@@ -6,6 +6,15 @@ from discord.ext.commands import Cog, Context
 import configreader
 
 
+async def show_message_attachment(ctx : Context, channel_id : int, attachments : list[discord.Attachment]):
+    channel = ctx.guild.get_channel(channel_id)
+    if channel:
+        for attachment in attachments:
+            if not attachment.is_voice_message():
+                await channel.send((await attachment.read()).decode('utf-8'))
+    else:
+        await ctx.reply("Invalid channel id.", mention_author=False, ephemeral=True)
+
 async def show_message(ctx : Context, channel_id : int, text_file : str):
     channel = ctx.guild.get_channel(channel_id)
     if channel:
@@ -19,15 +28,22 @@ async def show_message(ctx : Context, channel_id : int, text_file : str):
 
 
 class AdminCommands(Cog):
-
     @commands.Command
     async def display_message(self, ctx : Context, text_file : str):
         await show_message(ctx, ctx.channel.id, text_file)
+
+    @commands.Command
+    async def display_attachment(self, ctx : Context, attachments : commands.Greedy[discord.Attachment]):
+        await show_message_attachment(ctx, ctx.channel.id, attachments)
 
 
     @commands.Command
     async def send_message(self, ctx : Context, channel_id : id, text_file : str):
         await show_message(ctx, channel_id, text_file)
+
+    @commands.Command
+    async def send_attachment(self, ctx : Context, channel_id : id, attachments : commands.Greedy[discord.Attachment]):
+        await show_message_attachment(ctx, channel_id, attachments)
 
     async def cog_check(self, ctx) -> bool:
         if ctx.guild.id != configreader.admin_guild_id:

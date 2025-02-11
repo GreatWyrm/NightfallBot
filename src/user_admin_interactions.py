@@ -1,8 +1,8 @@
 import discord.ext.commands
 import discord.ext.tasks
 from discord import Interaction
-from discord.ext import commands, tasks
-from discord.ext.commands import Cog
+from discord.ext import commands
+from discord.ext.commands import Cog, has_permissions
 from discord.ext.commands import Context
 
 import configreader
@@ -15,7 +15,7 @@ unban_message_submitters = list()
 # What threads allow messages to be sent from them to the user they are about.
 open_threads = list()
 
-thank_you_form_text = ("Thank you for submitting the form!\n"
+thank_you_form_text = ("Thank you for your submission!\n"
                        "Our staff team will review it and contact you through this bot if needed.")
 
 # approvedTag = discord.ForumTag()
@@ -33,65 +33,45 @@ def has_user_sent_unban_request(user: discord.User) -> bool:
 
 
 class DirectMessageHandler(Cog):
-    bug_message = None
-
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.sendBugReportMessage(configreader.bot_bug_report_button_channel_id)
-        self.refreshBugButton.change_interval(minutes=5)
-        self.refreshBugButton.start()
-
-    async def cog_unload(self) -> None:
-        await self.removeBugReportMessage()
-        self.refreshBugButton.stop()
-
-    @tasks.loop()
-    async def refreshBugButton(self):
-        if self.bug_message:
-            self.bug_message = await self.bug_message.edit(content='Hit the button to submit a bug report.',
-                                                           view=BugPublicReportView())
-
-    async def sendBugReportMessage(self, channel_id):
-        if channel_id:
-            id = int(channel_id)
-            channel = nightfall_discord.nf_bot.get_channel(id)
-            if channel:
-                self.bug_message = await channel.send(content='Hit the button to submit a bug report.',
-                                                      view=BugPublicReportView(), silent=True)
-
-    async def removeBugReportMessage(self):
-        if self.bug_message is not None:
-            await self.bug_message.delete()
+        nightfall_discord.nf_bot.add_view(view=BugPublicReportView())
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-
-        if message.author != nightfall_discord.nf_bot.user and message.channel.id == configreader.bot_bug_report_button_channel_id and not message.author.guild_permissions.administrator:
-            await message.delete()
-
-        if message.author != nightfall_discord.nf_bot.user and isinstance(message.channel,
-                                                          discord.DMChannel) and not notifiedUsers.__contains__(
+        if message.author != nightfall_discord.nf_bot.user and isinstance(message.channel, discord.DMChannel) and not notifiedUsers.__contains__(
             message.author):
             channel = message.channel
             await channel.send("Hello! Here are the current available actions you may perform:",
                                view=MenuView())
             notifiedUsers.append(message.author)
 
+    @commands.Command
+    @has_permissions(manage_messages=True)
+    async def bug_report(self, ctx: commands.Context):
+        await ctx.channel.send(content='Hit the button to submit a bug report.',
+                           view=BugPublicReportView(), silent=True)
+
 
 class BugPublicReportView(discord.ui.View):
-    @discord.ui.button(label="Report Bug", style=discord.ButtonStyle.green, emoji="🐛")
-    async def button_callback_report_bug(self, interaction, button: discord.Button):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(label="Report Bug", style=discord.ButtonStyle.green, emoji="🐛", custom_id="bug_button"))
+        self.children[-1].callback = self.callback
+
+
+    async def callback(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(BugReportModal(False))
 
 
 class MenuView(discord.ui.View):
     @discord.ui.button(label="Open Issue", style=discord.ButtonStyle.primary, emoji="📝")
     async def button_callback_open_issue(self, interaction: discord.Interaction, button: discord.Button):
-        await interaction.response.send_modal(IssueModal(self.bot, self.config))
+        await interaction.response.send_modal(IssueModal())
 
     @discord.ui.button(label="Report Bug", style=discord.ButtonStyle.green, emoji="🐛")
     async def button_callback_report_bug(self, interaction, button: discord.Button):
-        await interaction.response.send_modal(BugReportModal(self.bot, self.config, True))
+        await interaction.response.send_modal(BugReportModal(True))
 
     @discord.ui.button(label="Request Unban", style=discord.ButtonStyle.danger, emoji="🔨")
     async def button_callback_opt2(self, interaction: discord.Interaction, button: discord.Button):
@@ -207,7 +187,7 @@ class BugReportModal(ThreadModal, title="Bug Report Form"):
             user = interaction.user
             notifiedUsers.remove(user)
 
-        await self.create_thread(interaction, self.channel, self.bug_name.value, self.reason, discord.Colour.green())
+        await self.create_thread(interaction, configreader.bot_bug_channel_id, self.bug_name.value, configreader.bot_bug_internal_reason, discord.Colour.green())
 
     # example_user : 34283492934
     #
@@ -289,13 +269,11 @@ class UnbanModal(ThreadModal, title="Unban Request Form"):
 
 class ThreadHandler(Cog):
 
-    def __init__(self):
-        self.bot = nightfall_discord.nf_bot
     @commands.Cog.listener()
     async def on_ready(self):
-        guild = self.bot.get_guild(configreader.bot_reports_guild_id)
+        guild = nightfall_discord.nf_bot.get_guild(configreader.bot_reports_guild_id)
         if guild:
-            channel = self.bot.get_channel(configreader.bot_unban_channel_id)
+            channel = nightfall_discord.nf_bot.get_channel(configreader.bot_unban_channel_id)
             if channel:
                 for thread in channel.threads:
                     user = self.get_user_from_ban_thread(thread.name)
@@ -310,7 +288,7 @@ class ThreadHandler(Cog):
     async def on_message(self, message: discord.Message):
         if message.content.startswith("!"):
             return
-        if message.author == self.bot.user or not message.guild or (
+        if message.author == nightfall_discord.nf_bot.user or not message.guild or (
                 message.guild and message.guild.id != configreader.bot_reports_guild_id) or not message.channel:
             return
 
@@ -341,16 +319,16 @@ class ThreadHandler(Cog):
 
     async def cog_command_error(self, ctx: Context, error: Exception) -> None:
         if isinstance(error, discord.ext.commands.GuildNotFound):
-            await ctx.send("You cannot use this in an invalid guild.")
+            await ctx.send("You cannot use this in an invalid guild.", ephemeral=True)
             return
         if isinstance(error, discord.ext.commands.ChannelNotFound):
-            await ctx.send("You cannot use this in an invalid channel.")
+            await ctx.send("You cannot use this in an invalid channel.", ephemeral=True)
             return
         if isinstance(error, discord.ext.commands.ThreadNotFound):
-            await ctx.send("You cannot use this in an channel is not a thread.")
+            await ctx.send("You cannot use this in an channel is not a thread.", ephemeral=True)
             return
         if isinstance(error, discord.ext.commands.BadArgument):
-            await ctx.send("You cannot use this in an invalid thread.")
+            await ctx.send("You cannot use this in an invalid thread.", ephemeral=True)
             return
 
     @commands.command(name="open_thread")
@@ -398,7 +376,7 @@ class ThreadHandler(Cog):
                 embed = discord.Embed(description=f"Moderator: {message.content}",
                                       color=discord.Colour.red())
                 embed.set_author(name="Unban Request Chat")
-                await user.send(embed=embed, view=ButtonResponseView(message.channel))
+                await user.send(embed=embed, view=ButtonResponseView(message.channel, "Unban Request Chat", discord.Colour.red()))
             else:
                 print("Tried to message a user that did not exist?")
 
@@ -409,11 +387,11 @@ class ThreadHandler(Cog):
         second_step = first_step.partition("\n")[0]
         if second_step == "":
             return None
-        return self.bot.get_user(int(second_step))
+        return nightfall_discord.nf_bot.get_user(int(second_step))
 
     def get_user_from_ban_thread(self, str) -> discord.User:
         user_id = int(str.partition(":")[2])
-        return self.bot.get_user(user_id)
+        return nightfall_discord.nf_bot.get_user(user_id)
 
 
 class ButtonResponseView(discord.ui.View):

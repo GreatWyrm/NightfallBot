@@ -7,19 +7,18 @@ from discord.ext.commands import has_permissions
 from mcstatus import JavaServer
 from mcstatus.status_response import JavaStatusResponse
 
-from configreader import ConfigReader
+import configreader
 
 
 #  With thanks to https://github.com/kkrypt0nn/Python-Discord-Bot-Template/ for code guidance
 
 class GameStatusWatch(Cog):
-    def __init__(self, bot : Bot, config : ConfigReader):
+    def __init__(self, bot : Bot):
         self.bot = bot
-        self.config = config
-        self.bot_response_handler = ServerUpdateChecker(self.config.host, self.config.port,
-                                                                   update_frequency=self.config.update_frequency,
-                                                                   embed_color_list=self.config.embed_colors)
-        self.gamewatch_pinger = GamewatchPinger(role_id=self.config.role_id, ping_cooldown=self.config.role_ping_cooldown_seconds, manual_cooldown=self.config.role_ping_manual_cooldown_seconds)
+        self.bot_response_handler = ServerUpdateChecker(configreader.host, configreader.port,
+                                                                   update_frequency=configreader.update_frequency,
+                                                                   embed_color_list=configreader.embed_colors)
+        self.gamewatch_pinger = GamewatchPinger(role_id=configreader.role_id, ping_cooldown=configreader.role_ping_cooldown_seconds, manual_cooldown=configreader.role_ping_manual_cooldown_seconds)
     def parse_server_status(status: JavaStatusResponse) -> str:
         latency = status.latency
         server_version = status.version.name
@@ -33,10 +32,10 @@ class GameStatusWatch(Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        update_channel = self.bot.get_channel(int(self.config.bot_updates_channel_id))
-        self.list_server_status.change_interval(minutes=self.config.update_frequency)
+        update_channel = self.bot.get_channel(int(configreader.bot_updates_channel_id))
+        self.list_server_status.change_interval(minutes=configreader.update_frequency)
         self.list_server_status.start(update_channel=update_channel)
-        print(f"Started periodic update with frequency of {self.config.update_frequency} minutes")
+        print(f"Started periodic update with frequency of {configreader.update_frequency} minutes")
 
     @tasks.loop()
     async def list_server_status(self, update_channel: discord.TextChannel) -> None:
@@ -75,8 +74,8 @@ class GameStatusWatch(Cog):
     @commands.cooldown(1, 3, commands.BucketType.guild)
     async def gamewatch(self, ctx: commands.Context):
         # Verify ping channel exists
-        if self.config.bot_ping_channel_id > 0:
-            ping_channel = ctx.guild.get_channel(int(self.config.bot_ping_channel_id))
+        if configreader.bot_ping_channel_id > 0:
+            ping_channel = ctx.guild.get_channel(int(configreader.bot_ping_channel_id))
             if not ping_channel:
                 print("Failed to find ping channel! (Wrong or missing id?)")
                 return
@@ -85,20 +84,20 @@ class GameStatusWatch(Cog):
                 return
             # Player count check
             current_online_count = self.bot_response_handler.get_player_count()
-            if current_online_count < self.config.min_players_ping_threshold:
-                await ctx.channel.send(f"Too few players online to ping! (Need {self.config.min_players_ping_threshold} or more "
+            if current_online_count < configreader.min_players_ping_threshold:
+                await ctx.channel.send(f"Too few players online to ping! (Need {configreader.min_players_ping_threshold} or more "
                                        f"players, only {current_online_count} player(s) online)")
                 return
             # Verify you pinged in the gamewatch role
             if self.gamewatch_pinger.can_ping_gamewatch(ctx.message.created_at):
-                await self.gamewatch_pinger.send_gamewatch_ping(ctx, ping_channel, self.bot.get_channel(int(self.config.bot_updates_channel_id)))
+                await self.gamewatch_pinger.send_gamewatch_ping(ctx, ping_channel, self.bot.get_channel(int(configreader.bot_updates_channel_id)))
             else:
                 # Print when you can ping gamewatch again
                 await self.gamewatch_pinger.send_gamewatch_on_cooldown(ctx)
         else:
             # Verify you pinged in the gamewatch role
             if self.gamewatch_pinger.can_ping_gamewatch(ctx.message.created_at):
-                await self.gamewatch_pinger.send_gamewatch_ping(ctx, ctx.channel, self.bot.get_channel(int(self.config.bot_updates_channel_id)))
+                await self.gamewatch_pinger.send_gamewatch_ping(ctx, ctx.channel, self.bot.get_channel(int(configreader.bot_updates_channel_id)))
             else:
                 # Print when you can ping gamewatch again
                 await self.gamewatch_pinger.send_gamewatch_on_cooldown(ctx)
@@ -116,7 +115,7 @@ class GameStatusWatch(Cog):
     @has_permissions(manage_messages=True)
     @commands.cooldown(1, 1, commands.BucketType.guild)
     async def restart_lister(self, ctx: commands.Context):
-        update_channel = self.bot.get_channel(self.config.bot_updates_channel_id)
+        update_channel = self.bot.get_channel(configreader.bot_updates_channel_id)
         self.list_server_status.restart(update_channel=update_channel)
         await ctx.channel.send("Restarted server updater.")
 
@@ -127,7 +126,7 @@ class GameStatusWatch(Cog):
         await self.bot.reload_extension("nightfall_discord")
 
     async def cog_check(self, ctx) -> bool:
-        if ctx.guild.id != self.config.bot_reports_guild_id:
+        if ctx.guild.id != configreader.bot_reports_guild_id:
             print(f"User: {ctx.author} Id: {ctx.author.id} tried to send a message or use a command in an invalid guild!")
             raise discord.ext.commands.GuildNotFound("")
         return True

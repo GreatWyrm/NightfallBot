@@ -1,5 +1,6 @@
 host = ""
 port = 00000
+admin_guild_id = 00000
 bot_updates_channel_id = 00000
 bot_ping_channel_id = 00000
 bot_reports_guild_id = 00000
@@ -7,7 +8,6 @@ bot_issue_channel_id = 00000
 bot_issue_internal_reason = ""
 bot_bug_channel_id = 00000
 bot_bug_internal_reason = ""
-bot_bug_report_button_channel_id = 00000
 bot_unban_channel_id = 00000
 bot_unban_internal_reason = ""
 bot_valid_thread_ids = list()
@@ -20,6 +20,7 @@ embed_colors = list()
 def readconfig(bot_config):
     global host
     global port
+    global admin_guild_id
     global bot_updates_channel_id
     global bot_ping_channel_id
     global bot_reports_guild_id
@@ -27,7 +28,6 @@ def readconfig(bot_config):
     global bot_issue_internal_reason
     global bot_bug_channel_id
     global bot_bug_internal_reason
-    global bot_bug_report_button_channel_id
     global bot_unban_channel_id
     global bot_unban_internal_reason
     global bot_valid_thread_ids
@@ -40,6 +40,7 @@ def readconfig(bot_config):
 
     host = str(bot_config['host'])
     port = int(bot_config['port'])
+    admin_guild_id = int(bot_config['admin-guild-id'])
     bot_updates_channel_id = int(bot_config['update_channel_id'])
     bot_ping_channel_id = bot_config['ping-channel']
     bot_reports_guild_id = int(bot_config['report-guild'])
@@ -55,8 +56,6 @@ def readconfig(bot_config):
     role_ping_manual_cooldown_seconds = int(bot_config['manual-cooldown-seconds'])
     min_players_ping_threshold = int(bot_config['min-players-threshold'])
     embed_colors = list(bot_config['embed-colors'])
-
-    bot_bug_report_button_channel_id = bot_config['bot-report-button-channel']
 
     bot_valid_thread_ids.append(bot_bug_channel_id)
     bot_valid_thread_ids.append(bot_unban_channel_id)

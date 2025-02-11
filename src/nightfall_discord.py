@@ -3,33 +3,35 @@ import os
 import yaml
 from discord.ext.commands import Bot
 
-from configreader import ConfigReader
+import configreader
+from admin_commands import AdminCommands
 from gamestatuswatch import GameStatusWatch
 from user_admin_interactions import DirectMessageHandler, ThreadHandler
 
 loadedcogs = list()
-nf_bot = Bot
+nf_bot = None
 
 async def load(bot: Bot):
     await bot.load_extension("nightfall_discord")
+    global nf_bot
+    nf_bot = bot
 
 
 async def setup(bot: Bot):
     print(f"Loading Nightfall Discord.")
-    global nf_bot
-    nf_bot = bot
     path = 'bot-config.yml'
     print(f"Loading {path}")
     if os.path.isfile(path):
         with open(path, 'r') as file:
             config = yaml.safe_load(file)
 
-        bot_config = ConfigReader(config)
+        configreader.readconfig(config)
 
         # Add all cogs into a list
-        loadedcogs.insert(0, GameStatusWatch(bot, bot_config))
-        loadedcogs.insert(1, DirectMessageHandler(bot, bot_config))
-        loadedcogs.insert(2, ThreadHandler(bot, bot_config))
+        loadedcogs.insert(0, GameStatusWatch(bot))
+        loadedcogs.insert(1, DirectMessageHandler())
+        loadedcogs.insert(2, ThreadHandler())
+        loadedcogs.insert(3, AdminCommands())
 
 
     # Add all cogs in the list to the bot

@@ -36,13 +36,21 @@ class AdminCommands(Cog):
     async def display_attachment(self, ctx : Context, attachments : commands.Greedy[discord.Attachment]):
         await show_message_attachment(ctx, ctx.channel.id, attachments)
 
+    @commands.Command
+    async def message(self, ctx : Context, channel_id : int, *, words : str):
+        channel = ctx.guild.get_channel(channel_id)
+        if channel:
+            await channel.send(words)
+        else:
+            await ctx.reply("Invalid channel id.", mention_author=False, ephemeral=True)
+
 
     @commands.Command
-    async def send_message(self, ctx : Context, channel_id : id, text_file : str):
+    async def send_message(self, ctx : Context, channel_id : int, text_file : str):
         await show_message(ctx, channel_id, text_file)
 
     @commands.Command
-    async def send_attachment(self, ctx : Context, channel_id : id, attachments : commands.Greedy[discord.Attachment]):
+    async def send_attachment(self, ctx : Context, channel_id : int, attachments : commands.Greedy[discord.Attachment]):
         await show_message_attachment(ctx, channel_id, attachments)
 
     async def cog_check(self, ctx) -> bool:

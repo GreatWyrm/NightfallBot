@@ -42,8 +42,8 @@ issue-internal-reason:
 bug-channel:
 #The reason listed in Discord's Audit Log when a bug report is created
 bug-internal-reason: 
-# Channel id where unban requests are posted
 
+# Channel id where unban requests are posted
 unban-channel:
 #The reason listed in Discord's Audit Log when a unban request is created
 unban-internal-reason:

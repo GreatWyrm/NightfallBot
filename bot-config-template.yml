@@ -1,30 +1,49 @@
+# The bot token (string)
 token:
-  # The bot token (string)
-host:
-  # Host of the Minecraft Server to retrieve data from (string)
+# Host of the Minecraft Server to retrieve data from (string)
+host: 
+# Port of the Minecraft server to retrieve data from (int)
 port:
-  # Port of the Minecraft server to retrieve data from (int)
-update_channel_id:
-  # Channel id where to send server update messages (int)
+#id of the server that can run bot commands
+admin-guild-id:
+#id of the server that hosts the report channels
+report-guild:
+
+# Channel id where to send messages showing the Minecraft Server information (int)
+update_channel_id: 
+# Number of minutes in between server update messages (float, minimum of 0.1 minutes, so you don't spam the API with a bad configuration)
 update_frequency:
-  # Number of minutes in between server update messages (float, minimum of 0.1 minutes, so you don't spam the API with a bad configuration)
+
+# Pairs of keyword - color objects that determine what color the embed has when a particular phrase (the keyword) is found
 embed-colors:
-  # Pairs of keyword - color objects that determine what color the embed has when a particular phrase (the keyword) is found
-  # Example in format:
-  # - color: 0xFFFFFF
-  #   keyword: "starting"
-  # Color is in hex representation,
-ping-role-id:
-  # Id of role to ping (gamewatch)
+  - color: 0xFFFFFF
+    keyword: "default"
+
+# Number of seconds in between valid role pings
 ping-cooldown-seconds:
-  # Number of seconds in between valid role pings
+# The id of the channel to restrict pings to
 ping-channel:
-  # The channel to restrict pings to
+# Id of role to ping (gamewatch)
+ping-role-id:
+# Number of seconds to put the role ping into cooldown for when running the manual command to force the ping onto cooldown
 manual-cooldown-seconds:
-  # Number of seconds to put the role ping into cooldown for when running the manual command to force the ping onto cooldown
-min-players-threshold:
-  # Number of players that must be online before a role ping is allowed
+# Number of players that must be online before a role ping is allowed
+min-players-threshold: 
+
+### Issue Reports
+# The config for designating where issues are put when reported to the bot
+
+# Channel id where issues are posted
 issue-channel:
-  # Channel id where issues are posted
-answerer_role:
-  # Role id of members that are added to threads that are created by this bot
+#The reason listed in Discord's Audit Log when an issue is created
+issue-internal-reason: 
+
+# Channel id where bug reports are posted
+bug-channel:
+#The reason listed in Discord's Audit Log when a bug report is created
+bug-internal-reason: 
+# Channel id where unban requests are posted
+
+unban-channel:
+#The reason listed in Discord's Audit Log when a unban request is created
+unban-internal-reason:

@@ -161,7 +161,7 @@ class ServerUpdateChecker:
         embed.set_thumbnail(url=channel.guild.icon.url)
         update_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         embed.set_footer(text=f"Updated on {update_time}. Updates every {self.update_frequency} minute(s).")
-        embed.add_field(name="w/ ", value=f"{player_list.online} players")
+        embed.add_field(name="Players Online", value=f"{player_list.online}")
 
         return embed
 
@@ -169,7 +169,7 @@ class ServerUpdateChecker:
         nf_server = JavaServer.lookup(self.hostaddress)
         status = nf_server.status()
         player_list = status.players
-        return f'Players Online: {player_list.online}/{player_list.max}'
+        return f'w/ {player_list.online} players'
 
     def get_player_count(self) -> int:
         nf_server = JavaServer.lookup(self.hostaddress)

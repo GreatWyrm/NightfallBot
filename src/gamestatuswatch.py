@@ -161,7 +161,7 @@ class ServerUpdateChecker:
         embed.set_thumbnail(url=channel.guild.icon.url)
         update_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         embed.set_footer(text=f"Updated on {update_time}. Updates every {self.update_frequency} minute(s).")
-        embed.add_field(name="Players Online", value=f"{player_list.online}/{player_list.max}")
+        embed.add_field(name="w/ ", value=f"{player_list.online} players")
 
         return embed
 
@@ -202,7 +202,7 @@ class GamewatchPinger:
                     message = await update_channel.fetch_message(lastmessageid)
                     if message.author.bot and message.embeds:
                         await ctx.reply(
-                            content=f"{ctx.author.name} has pinged Gamewatch, {role.mention}\n{message.jump_url}",
+                            content=f"{ctx.author.name} has pinged {role.mention}\n{message.jump_url}",
                             embeds=message.embeds,
                             mention_author=False
                         )

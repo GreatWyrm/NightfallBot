@@ -48,7 +48,7 @@ class ServerUpdateChecker:
         embed.set_thumbnail(url=channel.guild.icon.url)
         update_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         embed.set_footer(text=f"Updated on {update_time}. Updates every {self.update_frequency} minute(s).")
-        embed.add_field(name="Players Online", value=f"{player_list.online}/{player_list.max}")
+        embed.add_field(name="w/ ", value=f"{player_list.online} players")
 
         return embed
 

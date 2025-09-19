@@ -56,7 +56,7 @@ class ServerUpdateChecker:
         nf_server = JavaServer.lookup(self.hostaddress)
         status = nf_server.status()
         player_list = status.players
-        return f'Players Online: {player_list.online}/{player_list.max}'
+        return f'Players Online: {player_list.online}'
 
     def get_player_count(self) -> int:
         nf_server = JavaServer.lookup(self.hostaddress)
@@ -88,7 +88,7 @@ class GamewatchPinger:
                 message = await update_channel.fetch_message(lastmessageid)
                 if message.author.bot and message.embeds:
                     await ctx.reply(
-                        content=f"{ctx.author.name} has pinged Gamewatch, {role.mention}\n{message.jump_url}",
+                        content=f"{ctx.author.name} has pinged {role.mention}\n{message.jump_url}",
                         embeds=message.embeds,
                         mention_author=False
                     )
@@ -103,7 +103,7 @@ class GamewatchPinger:
         delta = (self.last_gamewatch_ping + timedelta(seconds=self.ping_cooldown)) - ctx.message.created_at
         # Cooldown: message created at - (last_ping_time + ping cooldown time) gives seconds until next ping
         await ctx.channel.send(
-            f"Gamewatch is on cooldown! You can ping again in {round(delta.total_seconds())} seconds.")
+            f"Gamewatch is on cooldown! You can ping in {round(delta.total_seconds())} seconds.")
 
     async def start_gamewatch_cooldown(self, ctx: commands.Context):
         # Set last gamewatch ping to now, plus the delta we want to supress, minus the delta of the standard ping

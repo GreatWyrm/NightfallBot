@@ -59,7 +59,7 @@ def readconfig(bot_config):
 
     bot_valid_thread_ids.append(bot_bug_channel_id)
     bot_valid_thread_ids.append(bot_unban_channel_id)
-    bot_valid_thread_ids.append(bot_valid_thread_ids)
+    bot_valid_thread_ids.append(bot_issue_channel_id)
 
     if update_frequency < 0.1:
         print("Update Frequency is too low (below 0.1)! Setting to 0.1...")

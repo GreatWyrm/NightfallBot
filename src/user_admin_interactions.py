@@ -65,6 +65,9 @@ class BugPublicReportView(discord.ui.View):
 
 
 class MenuView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
     @discord.ui.button(label="Open Issue", style=discord.ButtonStyle.primary, emoji="📝")
     async def button_callback_open_issue(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.send_modal(IssueModal())

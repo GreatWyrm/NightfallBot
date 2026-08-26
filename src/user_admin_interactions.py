@@ -42,7 +42,7 @@ class DirectMessageHandler(Cog):
         if message.author != nightfall_discord.nf_bot.user and isinstance(message.channel, discord.DMChannel) and not notifiedUsers.__contains__(
             message.author):
             channel = message.channel
-            await channel.send("Hello! Here are the current available actions you may perform:",
+            await channel.send("Hello! Here are the current available actions you may perform, if there is a problem, try re-messaging me.",
                                view=MenuView())
             notifiedUsers.append(message.author)
 

@@ -9,7 +9,7 @@ from gamestatuswatch import GameStatusWatch
 from user_admin_interactions import DirectMessageHandler, ThreadHandler
 
 loadedcogs = list()
-nf_bot = None
+nf_bot: Bot
 
 async def load(bot: Bot):
     await bot.load_extension("nightfall_discord")

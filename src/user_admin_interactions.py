@@ -1,9 +1,10 @@
 import discord.ext.commands
 import discord.ext.tasks
-from discord import Interaction
+from discord import Interaction, Attachment
 from discord.ext import commands
 from discord.ext.commands import Cog, has_permissions
 from discord.ext.commands import Context
+from discord.ui import Label, TextInput, FileUpload
 
 import configreader
 import nightfall_discord
@@ -25,7 +26,7 @@ thank_you_form_text = ("Thank you for your submission!\n"
 handledTag = discord.ForumTag(name="Handled")
 
 
-def has_user_sent_unban_request(user: discord.User) -> bool:
+def has_user_sent_unban_request(user: discord.User | discord.Member) -> bool:
     if unban_message_submitters.__contains__(user):
         return True
     else:
@@ -68,15 +69,15 @@ class MenuView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Open Issue", style=discord.ButtonStyle.primary, emoji="📝")
+    @discord.ui.button(label="Open Issue", style=discord.ButtonStyle.primary, emoji="📝", custom_id="issue_button")
     async def button_callback_open_issue(self, interaction: discord.Interaction, button: discord.Button):
         await interaction.response.send_modal(IssueModal())
 
-    @discord.ui.button(label="Report Bug", style=discord.ButtonStyle.green, emoji="🐛")
+    @discord.ui.button(label="Report Bug", style=discord.ButtonStyle.green, emoji="🐛", custom_id="bug_button")
     async def button_callback_report_bug(self, interaction, button: discord.Button):
-        await interaction.response.send_modal(BugReportModal(True))
+        await interaction.response.send_modal(BugReportModal(False))
 
-    @discord.ui.button(label="Request Unban", style=discord.ButtonStyle.danger, emoji="🔨")
+    @discord.ui.button(label="Request Unban", style=discord.ButtonStyle.danger, emoji="🔨", custom_id="unban_button")
     async def button_callback_opt2(self, interaction: discord.Interaction, button: discord.Button):
         if has_user_sent_unban_request(interaction.user):
             await interaction.response.send_message(
@@ -86,8 +87,15 @@ class MenuView(discord.ui.View):
 
 
 class ThreadModal(discord.ui.Modal):
-    async def create_thread(self, interaction: Interaction, channel_id: int, name: str, reason: str,
-                            color: discord.Colour):
+    def __init__(self, custom_id: str):
+        super().__init__(custom_id=custom_id, timeout=None)
+
+    async def create_thread(self, interaction: Interaction, channel_id: int, name: str, reason: str, color: discord.Colour, attachments: list[Attachment] | None = None):
+        if attachments is None:
+            attachments = list()
+        attached_files = list()
+        for attachment in attachments:
+            attached_files.append(await attachment.to_file(use_cached=True))
         channel = nightfall_discord.nf_bot.get_channel(channel_id)
         if isinstance(channel, discord.TextChannel) or isinstance(channel, discord.ForumChannel):
             if isinstance(channel, discord.ForumChannel):
@@ -95,14 +103,15 @@ class ThreadModal(discord.ui.Modal):
                                       color=color)
                 embed.set_thumbnail(url=interaction.user.avatar.url)
                 await channel.create_thread(name=name,
-                                            embed=embed, reason=reason)
+                                            embed=embed, reason=reason,
+                                            files=attached_files)
             elif isinstance(channel, discord.TextChannel):
                 thread = await channel.create_thread(name=name,
                                                      invitable=False, reason=reason)
                 embed = discord.Embed(description=self.create_message(interaction),
                                       color=color)
                 embed.set_thumbnail(url=interaction.user.avatar.url)
-                await thread.send(embed=embed)
+                await thread.send(embed=embed, files=attached_files)
                 await channel.send(thread.jump_url)
             else:
                 print("Tried to create a thread in a non text or forum channel!")
@@ -114,35 +123,44 @@ class ThreadModal(discord.ui.Modal):
 
 
 class IssueModal(ThreadModal, title="Issue Form"):
-    username_prompt = discord.ui.TextInput(label="Minecraft Username(Optional)",
-                                           placeholder="Your Username",
-                                           row=0,
-                                           required=False,
-                                           min_length=2,
-                                           max_length=16)
-    issue_name = discord.ui.TextInput(label="What is the issue?",
-                                      placeholder="...",
-                                      style=discord.TextStyle.short,
-                                      max_length=50,
-                                      required=True, row=1)
-    issue_description = discord.ui.TextInput(label="Describe the issue in more depth here.",
-                                             placeholder="...",
-                                             style=discord.TextStyle.paragraph,
-                                             max_length=1000,
-                                             required=False, row=2)
+    username_input = TextInput(label = "Minecraft Username",
+                                          placeholder="Your Username",
+                                          required=False,
+                                          min_length=2,
+                                          max_length=16,
+                                          id=100,
+                                          custom_id="issue_user_input")
+    issue_name_input = TextInput(label="What is the issue?",
+                                            placeholder="...",
+                                            style=discord.TextStyle.short,
+                                            max_length=50,
+                                            required=True,
+                                            id=101,
+                                            custom_id="issue_name_input")
+    issue_description_input = TextInput(label="Describe the issue in more depth here.",
+                                                   placeholder="...",
+                                                   style=discord.TextStyle.paragraph,
+                                                   max_length=1000,
+                                                   required=False,
+                                                   id=102,
+                                                   custom_id="issue_description_input")
+    issue_attached_label = Label(text="Attach any related files here.",
+                                            id=103,
+                                            component=FileUpload(required=False,
+                                                                 min_values=0,
+                                                                 max_values=10,
+                                                                 id=104,
+                                                                 custom_id="issue_attachment_input"))
 
     def __init__(self):
-        super().__init__()
+        super().__init__(custom_id="issue_thread_model")
         self.channel = configreader.bot_issue_channel_id
         self.reason = configreader.bot_issue_internal_reason
 
     async def on_submit(self, interaction: Interaction) -> None:
         await interaction.response.send_message(content=thank_you_form_text, ephemeral=True, silent=True)
-        await interaction.message.delete()
-        user = interaction.user
-        notifiedUsers.remove(user)
 
-        await self.create_thread(interaction, self.channel, self.issue_name.value, self.reason, discord.Colour.blue())
+        await self.create_thread(interaction, self.channel, self.issue_name_input.value, self.reason, discord.Colour.blue(), self.issue_attached_label.component.values)
 
     # example_user : 34283492934
     #
@@ -153,34 +171,46 @@ class IssueModal(ThreadModal, title="Issue Form"):
     def create_message(self, interaction) -> str:
         username = ""
         issue_description = ""
-        if self.username_prompt.value:
-            username = f"\n\n### MC Username:\n{self.username_prompt.value}"
-        if self.issue_description.value:
-            issue_description = f'\n\n### In-depth explanation of the issue:\n{self.issue_description.value}'
+        if self.username_input.value:
+            username = f"\n\n### MC Username:\n{self.username_input.value}"
+        if self.issue_description_input.value:
+            issue_description = f'\n\n### In-depth explanation of the issue:\n{self.issue_description_input.value}'
         return (f"{interaction.user.name} : {interaction.user.id} {username} {issue_description}"
                 )
 
 
 class BugReportModal(ThreadModal, title="Bug Report Form"):
-    username_prompt = discord.ui.TextInput(label="Minecraft Username(Optional)",
-                                           placeholder="Your Username",
-                                           row=0,
-                                           required=False,
-                                           min_length=2,
-                                           max_length=16)
-    bug_name = discord.ui.TextInput(label="What is the name of the bug?",
-                                    placeholder="...",
-                                    style=discord.TextStyle.short,
-                                    max_length=50,
-                                    required=True, row=1)
-    bug_description = discord.ui.TextInput(label="Describe the bug here.",
-                                           placeholder="...",
-                                           style=discord.TextStyle.paragraph,
-                                           max_length=1000,
-                                           required=False, row=2)
+    username_input = TextInput(label="Minecraft Username",
+                               placeholder="Your Username",
+                               required=False,
+                               min_length=2,
+                               max_length=16,
+                               id=200,
+                               custom_id="bug_user_input")
+    bug_name_input = TextInput(label="What is the bug you are reporting?",
+                               placeholder="...",
+                               style=discord.TextStyle.short,
+                               max_length=50,
+                               required=True,
+                               id=201,
+                               custom_id="bug_input")
+    bug_description_input = TextInput(label="Describe the bug here.",
+                                      placeholder="...",
+                                      style=discord.TextStyle.paragraph,
+                                      max_length=1000,
+                                      required=True,
+                                      id=202,
+                                      custom_id="bug_description_input")
+    issue_attached_label = Label(text="Attach any related files here.",
+                                 component=FileUpload(required=False,
+                                                      min_values=0,
+                                                      max_values=10,
+                                                      id=204,
+                                                      custom_id="bug_attached_input"),
+                                 id=203)
 
     def __init__(self, delete_message: bool):
-        super().__init__()
+        super().__init__(custom_id="bug_thread_model")
         self.delete_message = delete_message
 
     async def on_submit(self, interaction: Interaction) -> None:
@@ -190,7 +220,7 @@ class BugReportModal(ThreadModal, title="Bug Report Form"):
             user = interaction.user
             notifiedUsers.remove(user)
 
-        await self.create_thread(interaction, configreader.bot_bug_channel_id, self.bug_name.value, configreader.bot_bug_internal_reason, discord.Colour.green())
+        await self.create_thread(interaction, configreader.bot_bug_channel_id, self.bug_name_input.value, configreader.bot_bug_internal_reason, discord.Colour.green(), self.issue_attached_label.component.values)
 
     # example_user : 34283492934
     #
@@ -202,50 +232,59 @@ class BugReportModal(ThreadModal, title="Bug Report Form"):
         username = ""
         bug_description = ""
 
-        if self.username_prompt.value:
-            username = f"\n\n### MC Username:\n{self.username_prompt.value}"
+        if self.username_input.value:
+            username = f"\n\n### MC Username:\n{self.username_input.value}"
 
-        if self.bug_description:
-            bug_description = f"\n\n### Description of the bug:\n{self.bug_description.value}"
+        if self.bug_description_input:
+            bug_description = f"\n\n### Description of the bug:\n{self.bug_description_input.value}"
 
         return f"{interaction.user.name} : {interaction.user.id} {username} {bug_description}"
 
 
 class UnbanModal(ThreadModal, title="Unban Request Form"):
-    username_prompt = discord.ui.TextInput(label="Minecraft Username",
-                                           placeholder="Your Username",
-                                           row=0,
-                                           min_length=2,
-                                           max_length=16)
-    unban_should_prompt = discord.ui.TextInput(label="Why should you be unbanned?",
-                                               placeholder="...",
-                                               style=discord.TextStyle.paragraph,
-                                               max_length=1000,
-                                               required=False, row=2)
-    unban_want_prompt = discord.ui.TextInput(label="Why do you want to be unbanned?",
-                                             placeholder="...",
-                                             style=discord.TextStyle.paragraph,
-                                             max_length=1000,
-                                             required=False, row=1)
-    ban_reason_prompt = discord.ui.TextInput(label="Why were you banned?",
-                                             placeholder="Place your ban message here.",
-                                             max_length=500,
-                                             style=discord.TextStyle.paragraph,
-                                             required=False, row=3)
+    username_input = TextInput(label = "Minecraft Username",
+                               placeholder="Your Username",
+                               min_length=2,
+                               max_length=16,
+                               required=True,
+                               id=300,
+                               custom_id="unban_user_input")
+    ban_reason_input = TextInput(label="Why were you banned?",
+                                 placeholder="Place your ban message here.",
+                                 style=discord.TextStyle.short,
+                                 max_length=100,
+                                 required=True,
+                                 id=301,
+                                 custom_id="unban_when_input")
+    unban_should_input = TextInput(label="Why should you be unbanned?",
+                                   placeholder="...",
+                                   style=discord.TextStyle.paragraph,
+                                   max_length=1000,
+                                   required=True,
+                                   id=302,
+                                   custom_id="unban_what_input")
+    unban_want_input = TextInput(label="Why do you want to be unbanned?",
+                                 placeholder="...",
+                                 style=discord.TextStyle.paragraph,
+                                 max_length=1000,
+                                 required=True,
+                                 id=303,
+                                 custom_id="unban_why_input")
 
     def __init__(self):
-        super().__init__()
+        super().__init__(custom_id="unban_thread_model")
         self.channel = configreader.bot_unban_channel_id
         self.reason = configreader.bot_unban_internal_reason
 
     async def on_submit(self, interaction: Interaction) -> None:
-        await interaction.response.send_message(thank_you_form_text)
-        await interaction.message.delete()
+        await interaction.response.send_message(thank_you_form_text, ephemeral=True)
         user = interaction.user
-        notifiedUsers.remove(user)
 
-        await self.create_thread(interaction, self.channel, f"{user.name} : {user.id}", self.reason,
-                                 discord.Colour.red())
+        await self.create_thread(interaction=interaction,
+                                 channel_id=self.channel,
+                                 name=f"{user.name} : {user.id}",
+                                 reason=self.reason,
+                                 color=discord.Colour.red())
         unban_message_submitters.append(interaction.user)
 
     # Minecraft Username: ___________
@@ -260,14 +299,35 @@ class UnbanModal(ThreadModal, title="Unban Request Form"):
         unban_want = ""
         ban_reason = ""
 
-        if self.unban_should_prompt:
-            unban_should = f"\n\n### Why should I be unbanned?\n{self.unban_should_prompt.value}"
-        if self.unban_want_prompt:
-            unban_want = f"\n\n### Why would I want to be unbanned?\n{self.unban_want_prompt.value}"
-        if self.ban_reason_prompt:
-            ban_reason = f"\n\n### Why was I banned?\n{self.ban_reason_prompt.value}"
+        if self.unban_should_input:
+            unban_should = f"\n\n### Why should I be unbanned?\n{self.unban_should_input.value}"
+        if self.unban_want_input:
+            unban_want = f"\n\n### Why would I want to be unbanned?\n{self.unban_want_input.value}"
+        if self.ban_reason_input:
+            ban_reason = f"\n\n### Why was I banned?\n{self.ban_reason_input.value}"
 
-        return f"## MC Username: {self.username_prompt.value} {unban_want} {unban_should} {ban_reason}"
+        return f"## MC Username: {self.username_input.value} {unban_want} {unban_should} {ban_reason}"
+
+
+def get_user_from_thread(words: str | None):
+    if words:
+        first_step = str(words.partition(":")[2])
+        if first_step == "":
+            return None
+        second_step = first_step.partition("\n")[0]
+        if second_step == "":
+            return None
+        return nightfall_discord.nf_bot.get_user(int(second_step))
+    else:
+        return None
+
+
+def get_user_from_ban_thread(name: str | None) -> discord.User | None:
+    if name:
+        user_id = int(name.partition(":")[2])
+        return nightfall_discord.nf_bot.get_user(user_id)
+    else:
+        return None
 
 
 class ThreadHandler(Cog):
@@ -279,7 +339,7 @@ class ThreadHandler(Cog):
             channel = nightfall_discord.nf_bot.get_channel(configreader.bot_unban_channel_id)
             if channel:
                 for thread in channel.threads:
-                    user = self.get_user_from_ban_thread(thread.name)
+                    user = get_user_from_ban_thread(thread.name)
                     if user:
                         unban_message_submitters.append(user)
             else:
@@ -359,22 +419,23 @@ class ThreadHandler(Cog):
         open_threads.clear()
         return
 
-    async def on_thread_message(self, message, color):
+    async def on_thread_message(self, message: discord.Message, color):
         if not message.author.bot:
             starter_message = [message async for message in message.channel.history(oldest_first=True, limit=1)][0]
-            user = self.get_user_from_thread(starter_message.embeds[0].description)
-            if user:
-                embed = discord.Embed(description=f"Staff: {message.content}",
-                                      color=color)
-                embed.set_author(name=message.channel.name)
-                await user.send(embed=embed, view=ButtonResponseView(message.channel, message.channel.name, color))
-            else:
-                print(
-                    f"Tried to message a user that did not exist? Channel: {message.channel.name} Id: {message.channel.id}")
+            if starter_message and starter_message.embeds[0]:
+                user = get_user_from_thread(starter_message.embeds[0].description)
+                if user:
+                    embed = discord.Embed(description=f"Staff: {message.content}",
+                                          color=color)
+                    embed.set_author(name=message.channel.name)
+                    await user.send(embed=embed, view=ButtonResponseView(message.channel, message.channel.name, color))
+                else:
+                    print(
+                        f"Tried to message a user that did not exist? Channel: {message.channel.name} Id: {message.channel.id}")
 
     async def on_unban_thread_message(self, message):
         if not message.author.bot:
-            user = self.get_user_from_ban_thread(message.channel.name)
+            user = get_user_from_ban_thread(message.channel.name)
             if user:
                 embed = discord.Embed(description=f"Moderator: {message.content}",
                                       color=discord.Colour.red())
@@ -382,19 +443,6 @@ class ThreadHandler(Cog):
                 await user.send(embed=embed, view=ButtonResponseView(message.channel, "Unban Request Chat", discord.Colour.red()))
             else:
                 print("Tried to message a user that did not exist?")
-
-    def get_user_from_thread(self, words: str):
-        first_step = str(words.partition(":")[2])
-        if first_step == "":
-            return None
-        second_step = first_step.partition("\n")[0]
-        if second_step == "":
-            return None
-        return nightfall_discord.nf_bot.get_user(int(second_step))
-
-    def get_user_from_ban_thread(self, str) -> discord.User:
-        user_id = int(str.partition(":")[2])
-        return nightfall_discord.nf_bot.get_user(user_id)
 
 
 class ButtonResponseView(discord.ui.View):
@@ -423,13 +471,13 @@ class ResponseModal(discord.ui.Modal, title="Text Response"):
         self.color = color
 
     async def on_submit(self, interaction: Interaction) -> None:
-        userEmbed = discord.Embed(description=f"You: {self.response.value}",
+        user_embed = discord.Embed(description=f"You: {self.response.value}",
                                   color=self.color)
-        userEmbed.set_author(name=self.name)
-        await interaction.message.reply(embed=userEmbed)
+        user_embed.set_author(name=self.name)
+        await interaction.message.reply(embed=user_embed)
 
         if self.channel:
-            adminEmbed = discord.Embed(description=self.response.value,
+            admin_embed = discord.Embed(description=self.response.value,
                                        color=self.color)
-            adminEmbed.set_author(name=interaction.user.name)
-            await self.channel.send(embed=adminEmbed)
+            admin_embed.set_author(name=interaction.user.name)
+            await self.channel.send(embed=admin_embed)

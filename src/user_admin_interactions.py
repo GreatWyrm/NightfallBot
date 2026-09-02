@@ -95,23 +95,26 @@ class ThreadModal(discord.ui.Modal):
             attachments = list()
         attached_files = list()
         for attachment in attachments:
-            attached_files.append(await attachment.to_file(use_cached=True))
+            attached_files.append(await attachment.to_file())
         channel = nightfall_discord.nf_bot.get_channel(channel_id)
         if isinstance(channel, discord.TextChannel) or isinstance(channel, discord.ForumChannel):
             if isinstance(channel, discord.ForumChannel):
                 embed = discord.Embed(description=self.create_message(interaction),
                                       color=color)
                 embed.set_thumbnail(url=interaction.user.avatar.url)
-                await channel.create_thread(name=name,
-                                            embed=embed, reason=reason,
-                                            files=attached_files)
+                newThread = await channel.create_thread(name=name,
+                                            embed=embed, reason=reason)
+                if attached_files.__len__() > 0:
+                    await newThread.thread.send(content="User attached files.", files=attached_files)
             elif isinstance(channel, discord.TextChannel):
                 thread = await channel.create_thread(name=name,
                                                      invitable=False, reason=reason)
                 embed = discord.Embed(description=self.create_message(interaction),
                                       color=color)
                 embed.set_thumbnail(url=interaction.user.avatar.url)
-                await thread.send(embed=embed, files=attached_files)
+                await thread.send(embed=embed)
+                if attached_files.__len__() > 0:
+                 await thread.send(content="User attached files.", files=attached_files)
                 await channel.send(thread.jump_url)
             else:
                 print("Tried to create a thread in a non text or forum channel!")
@@ -145,12 +148,12 @@ class IssueModal(ThreadModal, title="Issue Form"):
                                                    id=102,
                                                    custom_id="issue_description_input")
     issue_attached_label = Label(text="Attach any related files here.",
-                                            id=103,
-                                            component=FileUpload(required=False,
-                                                                 min_values=0,
-                                                                 max_values=10,
-                                                                 id=104,
-                                                                 custom_id="issue_attachment_input"))
+                                 component=FileUpload(required=False,
+                                                      min_values=0,
+                                                      max_values=10,
+                                                      id=104,
+                                                      custom_id="issue_attachment_input"),
+                                 id=103)
 
     def __init__(self):
         super().__init__(custom_id="issue_thread_model")

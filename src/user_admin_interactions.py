@@ -1,6 +1,6 @@
 import discord.ext.commands
 import discord.ext.tasks
-from discord import Interaction, Attachment
+from discord import Interaction, Attachment, DMChannel
 from discord.ext import commands
 from discord.ext.commands import Cog, has_permissions
 from discord.ext.commands import Context
@@ -371,8 +371,7 @@ class ThreadHandler(Cog):
 
     async def cog_check(self, ctx: Context) -> bool:
         if ctx.guild.id != configreader.bot_reports_guild_id:
-            print(
-                f"User: {ctx.author} Id: {ctx.author.id} tried to send a message or use a command in an invalid guild!")
+            print(f"User: {ctx.author} Id: {ctx.author.id} tried to send a message or use a command in an invalid guild!")
             raise discord.ext.commands.GuildNotFound("")
         if not ctx.channel:
             raise discord.ext.commands.ChannelNotFound("")
@@ -425,27 +424,34 @@ class ThreadHandler(Cog):
     async def on_thread_message(self, message: discord.Message, color):
         if not message.author.bot:
             starter_message = [message async for message in message.channel.history(oldest_first=True, limit=1)][0]
-            if starter_message and starter_message.embeds[0]:
-                user = get_user_from_thread(starter_message.embeds[0].description)
-                if user:
-                    embed = discord.Embed(description=f"Staff: {message.content}",
-                                          color=color)
-                    embed.set_author(name=message.channel.name)
-                    await user.send(embed=embed, view=ButtonResponseView(message.channel, message.channel.name, color))
-                else:
-                    print(
-                        f"Tried to message a user that did not exist? Channel: {message.channel.name} Id: {message.channel.id}")
+            user = get_user_from_thread(starter_message.embeds[0].description)
+            if user:
+                dm_channel: DMChannel | None = user.dm_channel
+                if not dm_channel:
+                    print("DMChannel for user was missing. Creating a new one.")
+                    dm_channel: DMChannel = await user.create_dm()
+
+                embed = discord.Embed(description=f"Staff: {message.content}",
+                                      color=color)
+                embed.set_author(name=message.channel.name)
+                await dm_channel.send(embed=embed, view=ButtonResponseView(message.channel, message.channel.name, color))
+            else:
+                print(f"Tried to message a user that did not exist? Channel: {message.channel.name} Id: {message.channel.id}")
 
     async def on_unban_thread_message(self, message):
         if not message.author.bot:
             user = get_user_from_ban_thread(message.channel.name)
             if user:
+                dm_channel: DMChannel | None = user.dm_channel
+                if not dm_channel:
+                    print("DMChannel for user was missing. Creating a new one.")
+                    dm_channel: DMChannel = await user.create_dm()
                 embed = discord.Embed(description=f"Moderator: {message.content}",
                                       color=discord.Colour.red())
                 embed.set_author(name="Unban Request Chat")
-                await user.send(embed=embed, view=ButtonResponseView(message.channel, "Unban Request Chat", discord.Colour.red()))
+                await dm_channel.send(embed=embed, view=ButtonResponseView(message.channel, "Unban Request Chat", discord.Colour.red()))
             else:
-                print("Tried to message a user that did not exist?")
+                print(f"Tried to message a user that did not exist? Channel: {message.channel.name} Id: {message.channel.id}")
 
 
 class ButtonResponseView(discord.ui.View):

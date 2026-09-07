@@ -48,7 +48,7 @@ class GameStatusWatch(Cog):
                     last_message: discord.Message = await update_channel.fetch_message(last_message_id)
                     if last_message.author == self.bot.user:
                         if last_message.embeds:
-                            await last_message.edit(embed=self.bot_response_handler.get_periodic_update(update_channel))
+                            await last_message.edit(embed=self.bot_response_handler.get_periodic_update(channel=update_channel))
                         else:
                             await last_message.delete()
                             await update_channel.send(embed=self.bot_response_handler.get_periodic_update(channel=update_channel))
@@ -60,7 +60,7 @@ class GameStatusWatch(Cog):
             else:
                 print("Failed to find update channel! (Wrong or missing id?)")
             await self.bot.change_presence(activity=discord.Game(self.bot_response_handler.get_player_count_string()))
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException) as discordError:
+        except Exception as discordError:
             print(f"Failed to update server status")
             print(discordError)
 

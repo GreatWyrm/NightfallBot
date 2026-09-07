@@ -1,3 +1,5 @@
+from typing import cast
+
 import discord.ext.commands
 import discord.ext.tasks
 from discord import Interaction, Attachment, DMChannel
@@ -5,6 +7,7 @@ from discord.ext import commands
 from discord.ext.commands import Cog, has_permissions
 from discord.ext.commands import Context
 from discord.ui import Label, TextInput, FileUpload
+from discord.ui.view import BaseView
 
 import configreader
 import nightfall_discord
@@ -163,7 +166,7 @@ class IssueModal(ThreadModal, title="Issue Form"):
     async def on_submit(self, interaction: Interaction) -> None:
         await interaction.response.send_message(content=thank_you_form_text, ephemeral=True, silent=True)
 
-        await self.create_thread(interaction, self.channel, self.issue_name_input.value, self.reason, discord.Colour.blue(), self.issue_attached_label.component.values)
+        await self.create_thread(interaction, self.channel, self.issue_name_input.value, self.reason, discord.Colour.blue(), cast(FileUpload[BaseView], self.issue_attached_label.component).values)
 
     # example_user : 34283492934
     #
@@ -223,7 +226,7 @@ class BugReportModal(ThreadModal, title="Bug Report Form"):
             user = interaction.user
             notifiedUsers.remove(user)
 
-        await self.create_thread(interaction, configreader.bot_bug_channel_id, self.bug_name_input.value, configreader.bot_bug_internal_reason, discord.Colour.green(), self.issue_attached_label.component.values)
+        await self.create_thread(interaction, configreader.bot_bug_channel_id, self.bug_name_input.value, configreader.bot_bug_internal_reason, discord.Colour.green(), cast(FileUpload[BaseView], self.issue_attached_label.component).values)
 
     # example_user : 34283492934
     #
@@ -463,7 +466,7 @@ class ButtonResponseView(discord.ui.View):
 
     @discord.ui.button(label="Respond", style=discord.ButtonStyle.danger, emoji="📝")
     async def response_callback(self, interaction: discord.Interaction, button: discord.Button):
-        if self.channel:
+        if interaction.channel:
             await interaction.response.send_modal(ResponseModal(self.channel, self.name, self.color))
         else:
             await interaction.response.send_message("This chat has concluded.")
